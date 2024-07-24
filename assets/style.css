@@ -1,0 +1,104 @@
+* {
+    margin: 0;
+    padding: 0;
+}
+.container {
+    display: flex;
+    justify-content: space-between;
+}
+
+.menu-column {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%; /* Ajusta la altura del menú izquierdo al 100% del viewport */
+    width: 20%;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-right: 1px solid #dee2e6;
+    overflow-y: auto; /* Permite el desplazamiento vertical dentro del menú si es necesario */
+}
+
+.content-column {
+    margin-left: 20%; /* Deja espacio para el menú fijo */
+    width: 80%;
+    padding: 20px;
+    box-sizing: border-box; /* Asegura que el padding esté incluido en el ancho total */
+}
+
+.menu {
+    list-style-type: none;
+    padding: 0;
+}
+
+.menu li {
+    margin: 10px 0;
+}
+
+.menu li a {
+    text-decoration: none;
+    color: #007bff;
+    transition: color 0.3s;
+}
+
+.menu li a:hover {
+    color: #0056b3;
+}
+
+.substrac-section {
+    display: flex;
+}
+.substrac-section > div {
+    width: 50%;
+}
+.substrac-section {
+    margin-bottom: 10px;
+}
+.population-section * {
+    margin: 0;
+    padding: 0;
+}
+
+/*.factor-section {
+    /*display: inline-block;
+    vertical-align: top;
+    margin-bottom: 20px;*/
+/*}*/
+
+@media (max-width: 900px) {
+    #responsive-graph {
+        width: 100%;
+    }
+}
+@media (min-width: 900px) {
+    #responsive-graph {
+        width: 70%;
+    }
+}
+
+/* Estilo general para la tabla */
+.data-table-container {
+    width: 100%;
+    overflow-x: auto;
+}
+
+/* Media query para pantallas pequeñas */
+@media only screen and (max-width: 700px) {
+    .data-table-container {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    .dash-table-container .dash-spreadsheet-container {
+        width: 100%;
+    }
+
+    .dash-table-container .dash-spreadsheet-inner {
+        display: block;
+        overflow-x: auto;
+    }
+
+    .dash-table-container .dash-spreadsheet-inner table {
+        width: 100%;
+    }
+}
