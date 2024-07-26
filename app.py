@@ -203,7 +203,7 @@ def calculate_total(df_o, factor, p, column):
         2023: p[4]
     }
     df = df_o.copy()
-    df['Incidencia'] = (((df[column]/df['Año'].map(poblacion_estimada)) * factor).round(0)).astype(int)
+    df['Incidencia'] = (((df[column]/(df['Año'].map(poblacion_estimada)-df[column])) * factor).round(0)).astype(int)
     suma_total = df[column].sum()
     suma_total = suma_total if suma_total != 0 else 1
     if column == '< 15' or column == '15-19' or column == "< 19":
@@ -321,8 +321,8 @@ def generate_graph_total(df_barras, df_tendencias, labels_barras, labels_tendenc
 
     texttemplate = "%{text:.2f}%" if y == 'Porcentajes' else None
     # Lista de colores
-    color_barras = ['#01198D', '#011FB7', '#0126DF', '#0B34FE', '#4867FE']  # Puedes agregar más colores
-    color_tendencias = ['#FFC085', '#FFAB5C', '#FF9633', '#FF810A', '#E06C00']  # Puedes agregar más colores
+    color_barras = ['#011CA2', '#0B2FE4', '#2146FF', '#6E85F5', '#99AAFF']  # Puedes agregar más colores
+    color_tendencias = ['#FFCDA6', '#FFAB5C', '#FF932E', '#F88011', '#E95D0C']  # Puedes agregar más colores
 
     for i, df in enumerate(df_tendencias):
         tend_color = color_tendencias[i % len(color_tendencias)]
@@ -394,10 +394,10 @@ def generate_graph_join_gender(df_barras, df_tendencias, labels_barras, labels_t
 
     texttemplate = "%{text:.2f}%" if y == 'Porcentajes' else None
     # Lista de colores
-    color_barras_male = ['#01198D', '#011FB7', '#0126DF', '#0B34FE', '#4867FE']  # Puedes agregar más colores
-    color_tendencias_male = ['#4867FE', '#0B34FE', '#0126DF', '#011FB7', '#01198D']
-    color_barras_female = ['#E06C00', '#FF810A', '#FF9633', '#FFAB5C', '#FFC085']  # Puedes agregar más colores
-    color_tendencias_female = ['#FFC085', '#FFAB5C', '#FF9633', '#FF810A', '#E06C00']
+    color_barras_male = ['#011CA2', '#0B2FE4', '#2146FF', '#6E85F5', '#99AAFF']  # Puedes agregar más colores
+    color_tendencias_male = ['#99AAFF', '#6E85F5', '#2146FF', '#0B2FE4', '#011CA2']
+    color_barras_female = ['#E95D0C', '#F88011', '#FF932E', '#FFAB5C', '#FFCDA6']  # Puedes agregar más colores
+    color_tendencias_female = ['#FFCDA6', '#FFAB5C', '#FF932E', '#F88011', '#E95D0C']
     
     # Separar en DataFrames para hombres y mujeres
     df_barras_male = [df.loc[df['Sexo'] == 'Hombre'].reset_index(drop=True) for df in df_barras]
@@ -509,10 +509,10 @@ def generate_graph_separate_gender(dfs, graph_type, labels,
     texttemplate = "%{text:.2f}%" if y == 'Porcentajes' else None
 
     # Lista de colores
-    color_1_male = ['#01198D', '#011FB7', '#0126DF', '#0B34FE', '#4867FE']  # Puedes agregar más colores
-    color_2_male = ['#4867FE', '#0B34FE', '#0126DF', '#011FB7', '#01198D']
-    color_1_female = ['#E06C00', '#FF810A', '#FF9633', '#FFAB5C', '#FFC085']  # Puedes agregar más colores
-    color_2_female = ['#FFC085', '#FFAB5C', '#FF9633', '#FF810A', '#E06C00']
+    color_1_male = ['#011CA2', '#0B2FE4', '#2146FF', '#6E85F5', '#99AAFF']  # Puedes agregar más colores
+    color_2_male = ['#99AAFF', '#6E85F5', '#2146FF', '#0B2FE4', '#011CA2']
+    color_1_female = ['#E95D0C', '#F88011', '#FF932E', '#FFAB5C', '#FFCDA6']
+    color_2_female = ['#FFCDA6', '#FFAB5C', '#FF932E', '#F88011', '#E95D0C']
 
     # Separar en DataFrames para hombres y mujeres
     df_male = [df.loc[df['Sexo'] == 'Hombre'].reset_index(drop=True) for df in dfs]
@@ -636,8 +636,8 @@ def generate_graph_separate_age(df, graph_type, labels,
     fig = make_subplots(rows=1, cols=2, subplot_titles=['Hombres', 'Mujeres'])
 
     # Configuración de colores por año (puedes modificar o añadir más colores según necesites)
-    colors_male = ['#01198D', '#011FB7', '#0126DF', '#0B34FE', '#4867FE']
-    colors_female = ['#E06C00', '#FF810A', '#FF9633', '#FFAB5C', '#FFC085']
+    colors_male = ['#011CA2', '#0B2FE4', '#2146FF', '#6E85F5', '#99AAFF']
+    colors_female = ['#E95D0C', '#F88011', '#FF932E', '#FFAB5C', '#FFCDA6']
     
     age_columns = []
     if y == 'Total':
@@ -824,8 +824,8 @@ def generate_comparison_graph_by_year(df, labels,
     df_female = df[df['Sexo'] == 'Mujer']
 
     # Configuración de colores
-    color_male = '#011FB7'
-    color_female = '#FF810A'
+    color_male = '#011CA2'
+    color_female = '#F88011'
     
     fig = go.Figure()
 
@@ -894,7 +894,7 @@ def generate_comparison_graph_by_year(df, labels,
 def generate_graph_by_years(df, label, 
                                       title, size_title, x, size_x, y, size_y, footer, size_footer, size_legend, size_graph):
     # Configuración de colores
-    color = '#011FB7'  # Puedes ajustar el color según sea necesario
+    color = '#011CA2'
     
     fig = go.Figure()
 
@@ -949,6 +949,91 @@ def generate_graph_by_years(df, label,
         height=500
     )
 
+    return fig
+
+def generate_stacked_bar_chart(df, labels, title, size_title, x, size_x, y, size_y, footer, size_footer, size_legend, size_graph):
+    df_obesidad = df[0]
+    df_sobrepeso = df[1]
+    df_desnutricion = df[2]
+
+    # Calcular el total de embarazadas por año
+    df_obesidad['Total'] = df_obesidad['Embarazadas'] + df_sobrepeso['Embarazadas'] + df_desnutricion['Embarazadas']
+    df_sobrepeso['Total'] = df_obesidad['Total']
+    df_desnutricion['Total'] = df_obesidad['Total']
+
+    # Calcular el porcentaje de cada categoría respecto al total del año
+    df_obesidad['Porcentaje'] = (df_obesidad['Embarazadas'] / df_obesidad['Total']) * 100
+    df_sobrepeso['Porcentaje'] = (df_sobrepeso['Embarazadas'] / df_sobrepeso['Total']) * 100
+    df_desnutricion['Porcentaje'] = (df_desnutricion['Embarazadas'] / df_desnutricion['Total']) * 100
+
+    # Combinar los DataFrames para la visualización
+    df_combined = pd.merge(df_obesidad[[x, 'Porcentaje']], df_sobrepeso[[x, 'Porcentaje']], on=x, suffixes=('_Obesidad', '_Sobrepeso'))
+    df_combined = pd.merge(df_combined, df_desnutricion[[x, 'Porcentaje']], on=x)
+    df_combined.columns = [x, 'Obesidad', 'Sobrepeso', 'Desnutrición']
+
+    # Crear el DataFrame para la visualización
+    df_plot = df_combined.set_index(x)
+
+    # Crear el gráfico de barras apiladas con Plotly
+    fig = go.Figure()
+
+    # Agregar cada categoría como una traza en el gráfico con los colores deseados
+    fig.add_trace(go.Bar(
+        x=df_plot.index,
+        y=df_plot['Obesidad'],
+        name='Obesidad',
+        marker_color='#011CA2'  # Color para Obesidad
+    ))
+
+    fig.add_trace(go.Bar(
+        x=df_plot.index,
+        y=df_plot['Sobrepeso'],
+        name='Sobrepeso',
+        marker_color='#0B2FE4'  # Color para Sobrepeso
+    ))
+
+    fig.add_trace(go.Bar(
+        x=df_plot.index,
+        y=df_plot['Desnutrición'],
+        name='Desnutrición',
+        marker_color='#2146FF'  # Color para Desnutrición
+    ))
+
+    # Actualizar el diseño del gráfico
+    fig.update_layout(
+        title={
+            'text': title + ' (' + labels + ')', 
+            'x': 0.5, 
+            'xanchor': 'center',
+            'font': {'size': size_title}
+        },
+        xaxis_title=x,
+        yaxis_title='Porcentaje (%)',
+        barmode='stack',
+        legend=dict(font=dict(size=size_legend)),
+        plot_bgcolor='white',  # Fondo del área de trazado blanco
+        paper_bgcolor='white',  # Fondo del papel blanco
+        width=1000,  # Ancho del gráfico
+        height=600,  # Altura del gráfico
+        xaxis=dict(
+            type='category',  # Asegura que el eje X trate los valores como categorías
+            tickmode='array',  # Usa una lista explícita de valores para las etiquetas del eje X
+            tickvals=df_plot.index,  # Etiquetas de los años
+            ticktext=df_plot.index.astype(str)  # Convierte los años a texto
+        )
+    )
+
+    # Añadir porcentajes dentro de las barras con texto blanco centrado
+    fig.update_traces(
+        texttemplate='%{y:.1f}%',
+        textposition='inside',
+        textfont=dict(color='white', size=size_graph),  # Color del texto blanco y tamaño ajustado
+        insidetextanchor='middle'  # Centra el texto dentro de las barras
+    )
+    fig.update_xaxes(showgrid=True, gridcolor='lightgray', gridwidth=1, title_font=dict(size=size_x))
+    fig.update_yaxes(showgrid=True, gridcolor='lightgray', gridwidth=1, title_font=dict(size=size_y))
+
+    # Mostrar el gráfico
     return fig
 
 app.layout = html.Div([
@@ -1161,7 +1246,7 @@ def generate_calculo_layout(title):
                     id='dropdown-dataframes-bar-mun',
                     options=opciones_dataframes_municipio,
                     multi=True,
-                    value=['Gutierrez', 'Lagunillas']
+                    value=['Camiri', 'Gutierrez', 'Lagunillas']
                 )
             ], style={'display': 'inline-block', 'width': '45%'}),
             html.Div([
@@ -1340,7 +1425,7 @@ def generate_calculo_layout_nutricion(title):
                     id='dropdown-dataframes-bar-mun',
                     options=opciones_dataframes_municipio,
                     multi=True,
-                    value=['Gutierrez', 'Lagunillas']
+                    value=['Camiri', 'Gutierrez', 'Lagunillas']
                 )
             ], style={'display': 'inline-block', 'width': '45%'}),
             html.Div([
@@ -1528,7 +1613,7 @@ def generate_calculo_layout_embarazo(title):
                     id='dropdown-dataframes-bar-mun',
                     options=opciones_dataframes_municipio,
                     multi=True,
-                    value=['Gutierrez', 'Lagunillas']
+                    value=['Camiri', 'Gutierrez', 'Lagunillas']
                 )
             ], style={'display': 'inline-block', 'width': '45%'}),
             html.Div([
@@ -1697,7 +1782,7 @@ def generate_calculo_layout_consultas(title):
                     id='dropdown-dataframes-bar-mun',
                     options=opciones_dataframes_municipio,
                     multi=True,
-                    value=['Gutierrez', 'Lagunillas']
+                    value=['Camiri', 'Gutierrez', 'Lagunillas']
                 )
             ], style={'display': 'inline-block', 'width': '45%'}),
             html.Div([
@@ -1793,37 +1878,37 @@ def display_page(pathname):
     if pathname == '/cancer':
         return html.Div([
             html.H1('Recolección de datos - Análisis de Datos Cancer'),
-            generate_calculo_layout('Casos nuevos diagnosticados de Cancer por año a nivel Departamental, Provincial y Municipal')
+            generate_calculo_layout('Casos nuevos de Cáncer por Año en Departamentos, Provincias y Municipios')
         ])
     if pathname == '/diabetes':
         return html.Div([
             html.H1('Recolección de datos - Análisis de Datos Diabetes'),
-            generate_calculo_layout('Casos nuevos diagnosticados de Diabetes por año a nivel Departamental, Provincial y Municipal')
+            generate_calculo_layout('Casos nuevos de Diabetes por año a nivel Departamental, Provincial y Municipal')
         ])
     if pathname == '/hipertension':
         return html.Div([
             html.H1('Recolección de datos - Análisis de Datos Hipertensión Arterial'),
-            generate_calculo_layout('Casos nuevos diagnosticados de Hipertension por año a nivel Departamental, Provincial y Municipal')
+            generate_calculo_layout('Casos nuevos de Hipertension por año a nivel Departamental, Provincial y Municipal')
         ])
     if pathname == '/obesidad':
         return html.Div([
             html.H1('Recolección de datos - Análisis de Datos Obesidad'),
-            generate_calculo_layout('Casos nuevos diagnosticados de Obesidad por año a nivel Departamental, Provincial y Municipal')
+            generate_calculo_layout('Casos nuevos de Obesidad por año a nivel Departamental, Provincial y Municipal')
         ])
     if pathname == '/neumonia':
         return html.Div([
             html.H1('Recolección de datos - Análisis de Datos Neumonía'),
-            generate_calculo_layout('Casos nuevos diagnosticados de Neumonia por año a nivel Departamental, Provincial y Municipal')
+            generate_calculo_layout('Casos nuevos de Neumonia por año a nivel Departamental, Provincial y Municipal')
         ])
     if pathname == '/chagas':
         return html.Div([
             html.H1('Recolección de datos - Análisis de Datos Chagas'),
-            generate_calculo_layout('Casos nuevos diagnosticados de Chagas por año a nivel Departamental, Provincial y Municipal')
+            generate_calculo_layout('Casos nuevos de Chagas por año a nivel Departamental, Provincial y Municipal')
         ])
     if pathname == '/vih':
         return html.Div([
             html.H1('Recolección de datos - Análisis de Datos VIH'),
-            generate_calculo_layout('Casos nuevos diagnosticados de VIH por año a nivel Departamental, Provincial y Municipal')
+            generate_calculo_layout('Casos nuevos de VIH por año a nivel Departamental, Provincial y Municipal')
         ])
     elif pathname == '/nutricion':        
         return html.Div([
@@ -2245,9 +2330,11 @@ def update_output_nutricion(n_clicks, type_nutrition, type_percent,
 
             dfl_barras = dataframes_bar_dep + dataframes_bar_prov + dataframes_bar_mun
             dfl_tendencias = dataframes_ten_dep + dataframes_ten_prov + dataframes_ten_mun
+            dfl_total = dataframes_bar_dep + dataframes_ten_dep + dataframes_bar_prov + dataframes_ten_prov + dataframes_bar_mun + dataframes_ten_mun
 
             dfl_barras = [item for item in dfl_barras if item]
             dfl_tendencias = [item for item in dfl_tendencias if item]
+            dfl_total = [item for item in dfl_total if item]
 
             resultados = []
             partes = pathname.split('/')
@@ -2344,11 +2431,19 @@ def update_output_nutricion(n_clicks, type_nutrition, type_percent,
                     'Gutierrez': df_r_g,
                     'Lagunillas': df_r_l
                 }
+                dataframes_t = {
+                    'Santa Cruz': [df_sc_o, df_sc_s, df_sc_d],
+                    'Cordillera': [df_pc_o, df_pc_s, df_pc_d],
+                    'Camiri': [df_c_o, df_c_s, df_c_d],
+                    'Gutierrez': [df_g_o, df_g_s, df_g_d],
+                    'Lagunillas': [df_l_o, df_l_s, df_l_d]
+                }
 
                 df_barras = [dataframes[nombre] for nombre in dfl_barras if nombre in dataframes]
                 df_tendencias = [dataframes[nombre] for nombre in dfl_tendencias if nombre in dataframes]
                 df_r_barras = [dataframes_r[nombre] for nombre in dfl_barras if nombre in dataframes_r]
                 df_r_tendencias = [dataframes_r[nombre] for nombre in dfl_tendencias if nombre in dataframes_r]
+                df_total = [dataframes_t[nombre] for nombre in dfl_total if nombre in dataframes_t]
 
                 resultados = []
                 if n_clicks > 0:                
@@ -2362,6 +2457,12 @@ def update_output_nutricion(n_clicks, type_nutrition, type_percent,
                                                 tamanio_titulo, 'Año', tamanio_eje_x, type_percent, tamanio_eje_y,
                                                 pie, tamanio_pie, tamanio_leyenda, tamanio_num_grafica)
                     resultados.append(dcc.Graph(id='mi-grafico-rep-total-nutricion', figure=fig))
+
+                    for i, df in enumerate(df_total):
+                        fig = generate_stacked_bar_chart(df, dfl_total[i], titulo, tamanio_titulo, 'Año', tamanio_eje_x, type_percent, tamanio_eje_y,
+                                                    pie, tamanio_pie, tamanio_leyenda, tamanio_num_grafica)
+                        resultados.append(dcc.Graph(id=f'mi-grafico-total-nutricion-{i}', figure=fig))
+                    
                     return resultados
             
                 return html.Div("")
