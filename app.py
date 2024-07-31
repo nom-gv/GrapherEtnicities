@@ -55,7 +55,7 @@ archivos = [
     ('CasosEstadoNutricional-Afrobolivianos.xlsx', '1PGbomzjaufJt6mOSPtC3B7MIyKBymgxn'),
     ('DatosPoblaciones-Afrobolivianos.xlsx', '1_j05pCS_IeudCbt7oTm38tzbhYi2cbRc'),
     ('DatosEspeciales-Afrobolivianos.xlsx', '1TOHGe0-akhPcUgpFQN4uNFUvVbUeOiKo'),
-    ('DatosSalud-Guaranis.xlsx', '1nwHZlHei9mXbpKGPe2H7-26fukezEAuD')
+    ('CaracteristicasSocieconomicas-Guaranis.xlsx', '1WTJkEGpCEkVoDmkGc_OoRfHpBvgDsUP1')
 ]
 
 # Función para descargar todos los archivos en un hilo separado
@@ -123,7 +123,7 @@ def get_casos(tipo, comunidad):
             'afroboliviano': 'DatosEspeciales-Afrobolivianos.xlsx'
         },
         'salud': {
-            'guarani': 'DatosSalud-Guaranis.xlsx'
+            'guarani': 'CaracteristicasSocieconomicas-Guaranis.xlsx'
         }
     }
     
@@ -177,7 +177,7 @@ def get_casos(tipo, comunidad):
             'afroboliviano': ["ESPECIAL-AFROS"]
         },
         'salud': {
-            'guarani': ["SALUD-G", "SALUD-L"],
+            'guarani': ["POBLACION-SC", "ETNICIDAD-SC", "ALFABETISMO-SC", "SERVICIOS-BASICOS-SC", "NUMERO-DORMITORIOS-SC", "CATEGORIA-OCUPACIONAL-SC", "ABAN-INTRA-ESC-C", "ABAN-INTRA-ESC-G", "ABAN-INTRA-ESC-L"]
         }
     }
     
@@ -221,7 +221,7 @@ def calculate_gender(df_o, factor, m, h):
 
     # Calcular incidencias
     df['Incidencia'] = df.apply(
-        lambda row: (row['Total'] / total_hombres[row['Año']] * factor) if row['Sexo'] == 'Hombre' else (row['Total'] / total_mujeres[row['Año']] * factor),
+        lambda row: (row['Total'] / (total_hombres[row['Año']] - row['Total']) * factor) if row['Sexo'] == 'Hombre' else (row['Total'] / (total_mujeres[row['Año']] - row['Total']) * factor),
         axis=1
     ).round().astype(int)
     
@@ -255,18 +255,25 @@ def calculate_age(df_original, p, type):
       df.drop(columns=['< 6', '0-1', '1-4', '5-9', '10-14', '15-19'], inplace=True)
       age_columns = ['0-19', '20-39', '40-49', '50-59', '60+']
     
+    elif type == "embarazo":
+      age_columns = ['< 15', '15-19', '20-34', '35-49', '50+']
+    
     else:
       df['0-9'] = df['< 6'] + df['0-1'] + df['1-4'] + df['5-9']
       df['10-19'] = df['10-14'] + df['15-19']
       df.drop(columns=['< 6', '0-1', '1-4', '5-9', '10-14', '15-19'], inplace=True)
       age_columns = ['0-9', '10-19', '20-39', '40-49', '50-59', '60+']
-
-    df = df.loc[:, ['Año', 'Sexo'] + age_columns + ['Total']] 
+    
+    if(type == "embarazo"):
+        df = df.loc[:, ['Año', 'Tipo'] + age_columns + ['Total']] 
+    else:
+        df = df.loc[:, ['Año', 'Sexo'] + age_columns + ['Total']] 
     # Recorrer las columnas de edad y calcular incidencias para cada una
-    for age_col in age_columns:
-        # Calcular incidencias por cada mil habitantes 
-        df[f'I_{age_col}'] = round((df[age_col] / p[age_col]) * 10000, 0)
-        df[f'I_{age_col}'] = df[f'I_{age_col}'].astype(int)
+    if type != "embarazo":
+        for age_col in age_columns:
+            # Calcular incidencias por cada mil habitantes 
+            df[f'I_{age_col}'] = round((df[age_col] / (p[age_col] - df[age_col])) * 10000, 0)
+            df[f'I_{age_col}'] = df[f'I_{age_col}'].astype(int)
 
     for age_col in age_columns:
         percent_col = f"% {age_col}"
@@ -282,17 +289,49 @@ def calculate_age_total(df_o, type):
     elif type == "diabetes" or type == "hipertension":
         age_columns = ['0-19', '20-39', '40-49', '50-59', '60+']
 
+    elif type == "embarazo":
+      age_columns = ['< 15', '15-19', '20-34', '35-49', '50+']
+
     else:
         age_columns = ['0-9', '10-19', '20-39', '40-49', '50-59', '60+']
 
-    df_summed = df.groupby('Sexo').sum().reset_index()
-    df_summed = df_summed.drop(columns=['Año'])
+    if type == "embarazo":
+        df_summed = df.groupby('Tipo').sum().reset_index()
+    else:
+        df_summed = df.groupby('Sexo').sum().reset_index()
+        df_summed = df_summed.drop(columns=['Año'])
 
     for age_col in age_columns:
             percent_col = f"% {age_col}"
             df_summed[percent_col] = df_summed.apply(lambda row: round((row[age_col] / row['Total']) * 100, 2) if row['Total'] != 0 else 0, axis=1)
 
     return df_summed
+
+def calculate_population_group(df):
+    # Definir los grupos etarios
+    grupos_etarios = {
+        '0-9 años': ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
+        '10-19 años': ['10', '11', '12', '13', '14', '15', '16', '17', '18', '19'],
+        '20-29 años': ['20', '21', '22', '23', '24', '25', '26', '27', '28', '29'],
+        '30-39 años': ['30-34', '35-39'],
+        '40-49 años': ['40-44', '45-49'],
+        '50-59 años': ['50-54', '55-59'],
+        '60-69 años': ['60-64', '65-69'],
+        '70-79 años': ['70-74', '75-79'],
+        '80 o más': ['80 o más']
+    }
+
+    # Crear una copia del DataFrame para evitar modificaciones en el original
+    df_grupos_etarios = df.copy()
+
+    # Agrupar los datos por grupos etarios
+    for grupo, edades in grupos_etarios.items():
+        df_grupos_etarios[grupo] = df[edades].sum(axis=1)
+    
+    # Seleccionar las columnas relevantes para la gráfica
+    df_grupos_etarios = df_grupos_etarios[['DEP_PROV_MUN', 'Sexo'] + list(grupos_etarios.keys())]
+    
+    return df_grupos_etarios
 
 def table_total_percent(df):
     # Agrupar por año y sexo para obtener los totales
@@ -333,6 +372,7 @@ def generate_graph_total(df_barras, df_tendencias, labels_barras, labels_tendenc
             text=df[y],
             texttemplate=texttemplate,
             textfont=dict(color=tend_color, family="sans-serif", size=size_graph, weight='bold'),
+            #textfont=dict(family="sans-serif", size=size_graph, weight='bold'),
             textposition="top center",
             mode='lines+markers+text',
             name=labels_tendencias[i],
@@ -349,9 +389,10 @@ def generate_graph_total(df_barras, df_tendencias, labels_barras, labels_tendenc
             text=df[y],
             texttemplate=texttemplate,
             textfont=dict(color=bar_color, family="sans-serif", size=size_graph, weight='bold'),
+            #textfont=dict(family="sans-serif", size=size_graph, weight='bold'),
             textposition='outside',
             name=labels_barras[i],
-            marker=dict(color=bar_color)
+            marker=dict(color=bar_color, line=dict(color='black', width=1))
         ))
     if y == "Incidencia":
         y = "Incidencia x 10000 personas"
@@ -417,7 +458,7 @@ def generate_graph_join_gender(df_barras, df_tendencias, labels_barras, labels_t
             textfont=dict(color=bar_color, family="sans-serif", size=size_graph, weight='bold'),
             textposition='outside',
             name='Hombre-'+labels_barras[i],
-            marker=dict(color=bar_color)
+            marker=dict(color=bar_color, line=dict(color='black', width=1))
         ), row=1, col=1)
 
     for i, df in enumerate(df_tendencias_male):
@@ -447,7 +488,7 @@ def generate_graph_join_gender(df_barras, df_tendencias, labels_barras, labels_t
             textfont=dict(color=bar_color, family="sans-serif", size=size_graph, weight='bold'),
             textposition='outside',
             name='Mujer-'+labels_barras[i],
-            marker=dict(color=bar_color)
+            marker=dict(color=bar_color, line=dict(color='black', width=1))
         ), row=1, col=2)
 
     for i, df in enumerate(df_tendencias_female):
@@ -532,7 +573,7 @@ def generate_graph_separate_gender(dfs, graph_type, labels,
                 textfont=dict(color=bar_color, family="sans-serif", size=size_graph),
                 textposition='outside',
                 name=f'Hombre - {labels[i]}',
-                marker=dict(color=bar_color),
+                marker=dict(color=bar_color, line=dict(color='black', width=1)),
                 showlegend=False
             ), row=row, col=col)
 
@@ -549,7 +590,7 @@ def generate_graph_separate_gender(dfs, graph_type, labels,
                 textfont=dict(color=bar_color, family="sans-serif", size=size_graph),
                 textposition='outside',
                 name=f'Mujer - {labels[i]}',
-                marker=dict(color=bar_color),
+                marker=dict(color=bar_color, line=dict(color='black', width=1)),
                 showlegend=False
             ), row=row, col=col)
 
@@ -673,7 +714,7 @@ def generate_graph_separate_age(df, graph_type, labels,
             legendgroup='hombres',
             texttemplate='%{y}',
             textposition='outside', 
-            textfont=dict(color=colors_male[i], size=size_graph),
+            textfont=dict(color=colors_male[i], size=size_graph, line=dict(color='black', width=1)),
         ), row=1, col=1)
 
     # Añadir barras para mujeres
@@ -686,7 +727,7 @@ def generate_graph_separate_age(df, graph_type, labels,
             legendgroup='mujeres',
             texttemplate='%{y}',
             textposition='outside', 
-            textfont=dict(color=colors_female[i], size=size_graph),
+            textfont=dict(color=colors_female[i], size=size_graph, line=dict(color='black', width=1)),
         ), row=1, col=2)
 
     if y == "Incidencia":
@@ -722,6 +763,68 @@ def generate_graph_separate_age(df, graph_type, labels,
     fig.update_xaxes(title_font=dict(size=size_x), title_text="Edad", row=1, col=2)
     fig.update_yaxes(showgrid=True, gridcolor='lightgray', gridwidth=1, title_font=dict(size=size_y), row=1, col=1)
     fig.update_yaxes(showgrid=True, gridcolor='lightgray', gridwidth=1, title_font=dict(size=size_y), row=1, col=2)
+
+    return fig
+
+def generate_graph_age_pregnans(df, graph_type, labels, 
+                           title, size_title, x, size_x, y, size_y, footer, size_footer, size_legend, size_graph):
+    # Crear figura
+    fig = go.Figure()
+
+    df_female = df.copy()
+    colors_female = ['#E95D0C', '#F88011', '#FF932E', '#FFAB5C', '#FFCDA6']
+    
+    if y != 'Incidencia':
+        age_columns = []
+        if y == 'Total':
+            age_columns = ['< 15', '15-19', '20-34', '35-49', '50+']
+        elif y == 'Porcentaje':
+            age_columns = ['% < 15', '% 15-19', '% 20-34', '% 35-49', '% 50+']
+
+        # Añadir barras para cada año
+        for i, year in enumerate(df[x].unique()):
+            fig.add_trace(go.Bar(
+                x=age_columns,  # Columnas desde < 6 en adelante son edades
+                y=df_female[df_female[x] == year][age_columns].iloc[0],  # Fila correspondiente al año y mujeres
+                name=f'Año {year}',
+                marker=dict(color=colors_female[i % len(colors_female)], line=dict(color='black', width=1)),
+                texttemplate='%{y}',
+                textposition='outside', 
+                textfont=dict(color=colors_female[i % len(colors_female)], size=size_graph),
+            ))
+
+        # Ajustes de layout
+        fig.update_layout(
+            title={
+                'text': title + ' (' + labels + ')',
+                'x': 0.5,
+                'xanchor': 'center',
+                'font': dict(size=size_title)
+            },
+            barmode='stack',  # Apilar barras
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            yaxis=dict(
+                title=y,
+                titlefont_size=size_y,
+                showgrid=True,  # Mostrar cuadrícula en el eje y
+            ),
+            annotations=[
+                dict(
+                    text=footer,
+                    xref="paper", yref="paper",
+                    x=0.5, y=-0.2,  # Ajustar posición según sea necesario
+                    showarrow=False,
+                    font=dict(size=size_footer)
+                )
+            ],
+            width=800,  # Ancho de la gráfica
+            height=500  # Alto de la gráfica
+        )
+
+        # Ajustar título del eje x
+        fig.update_xaxes(title_font=dict(size=size_x), title_text="Edad")
+        fig.update_yaxes(showgrid=True, gridcolor='lightgray', gridwidth=1, title_font=dict(size=size_y))
 
     return fig
 
@@ -766,7 +869,7 @@ def generate_graph_join_age(df, graph_type, labels,
         x=age_columns,
         y=df_male[age_columns].iloc[0],
         name='Hombres',
-        marker=dict(color=color_male),
+        marker=dict(color=color_male, line=dict(color='black', width=1)),
         texttemplate='%{y}',
         textposition='outside',
         textfont=dict(color=color_male, size=size_graph),
@@ -777,7 +880,7 @@ def generate_graph_join_age(df, graph_type, labels,
         x=age_columns,
         y=df_female[age_columns].iloc[0],
         name='Mujeres',
-        marker=dict(color=color_female),
+        marker=dict(color=color_female, line=dict(color='black', width=1)),
         texttemplate='%{y}',
         textposition='outside',
         textfont=dict(color=color_female, size=size_graph),
@@ -834,7 +937,7 @@ def generate_comparison_graph_by_year(df, labels,
         x=df_male[x],
         y=df_male[y],
         name='Hombres',
-        marker=dict(color=color_male),
+        marker=dict(color=color_male, line=dict(color='black', width=1)),
         texttemplate='%{y}',
         textposition='outside',
         textfont=dict(color=color_male, size=size_graph),
@@ -845,7 +948,7 @@ def generate_comparison_graph_by_year(df, labels,
         x=df_female[x],
         y=df_female[y],
         name='Mujeres',
-        marker=dict(color=color_female),
+        marker=dict(color=color_female, line=dict(color='black', width=1)),
         texttemplate='%{y}',
         textposition='outside',
         textfont=dict(color=color_female, size=size_graph),
@@ -1036,6 +1139,476 @@ def generate_stacked_bar_chart(df, labels, title, size_title, x, size_x, y, size
     # Mostrar el gráfico
     return fig
 
+def generate_population_pyramid(df, region):
+    # Filtrar los datos por la región especificada
+    df_region = df[df['DEP_PROV_MUN'] == region]
+    
+    # Definir los grupos etarios en orden inverso
+    grupos_etarios = ['80 o más', '70-79 años', '60-69 años', '50-59 años', '40-49 años', '30-39 años', '20-29 años', '10-19 años', '0-9 años']
+
+    # Filtrar los datos por sexo
+    df_male = df_region[df_region['Sexo'] == 'Hombre']
+    df_female = df_region[df_region['Sexo'] == 'Mujer']
+
+    # Sumar los datos por grupos etarios
+    x_male = df_male[grupos_etarios].sum()
+    x_female = df_female[grupos_etarios].sum()
+
+    # Encontrar el valor máximo en los datos
+    max_value = max(x_male.max(), x_female.max())
+
+    # Definir intervalos de ticks para diferentes rangos de datos
+    intervals = {
+        (0, 500): 50,
+        (501, 1000): 100,
+        (1001, 5000): 500,
+        (5001, 10000): 1000,
+        (10001, 50000): 5000,
+        (50001, 100000): 10000
+    }
+
+    # Encontrar el intervalo de ticks adecuado para el valor máximo
+    tick_interval = next(interval for range, interval in intervals.items() if range[0] <= max_value <= range[1])
+
+    # Definir los colores por grupos etarios
+    colors_male = ['#0B34FE', '#0B34FE', '#0B34FE', '#0126DF', '#0126DF', '#011FB7', '#011FB7', '#01198D', '#01198D']
+    colors_female = ['#FFAB5C', '#FFAB5C', '#FFAB5C', '#FF9633', '#FF9633', '#FF810A', '#FF810A', '#E06C00', '#E06C00']
+
+    # Crear la figura con dos subgráficas
+    fig = make_subplots(
+        rows=1, cols=2,
+        subplot_titles=('Hombres', 'Mujeres'),
+        shared_yaxes=True,
+        vertical_spacing=0.04,
+        horizontal_spacing=0.04
+    )
+
+    # Añadir el gráfico de hombres
+    fig.add_trace(go.Bar(
+        y=grupos_etarios,
+        x=x_male,
+        orientation='h',
+        name='Hombres',
+        marker=dict(color=colors_male, line=dict(color='black', width=1)),
+        text=[f'{int(value)}' for value in x_male],
+        textposition='inside',
+        texttemplate='%{text}',
+        textfont=dict(color='white', size=16),
+        insidetextanchor='middle',
+        # Ajustar el eje x para mostrar valores en orden descendente
+        xaxis='x'
+    ), row=1, col=1)
+
+    # Añadir el gráfico de mujeres
+    fig.add_trace(go.Bar(
+        y=grupos_etarios,
+        x=x_female,
+        orientation='h',
+        name='Mujeres',
+        marker=dict(color=colors_female, line=dict(color='black', width=1)),
+        text=[f'{int(value)}' for value in x_female],
+        textposition='inside',
+        texttemplate='%{text}',
+        textfont=dict(color='white', size=16),
+        insidetextanchor='middle'
+    ), row=1, col=2)
+
+    # Configurar el diseño de la gráfica
+    fig.update_layout(
+        title=f'Pirámide de Población - {region}',
+        title_x=0.5,  # Centrar el título
+        title_font=dict(size=24),
+        xaxis_title='Población',
+        yaxis_title='Grupos Etarios',
+        yaxis=dict(
+            title='Grupos Etarios',
+            autorange='reversed',
+            gridcolor='gray',  # Color de las líneas de la cuadrícula en el eje Y
+            gridwidth=0.5
+        ),
+        yaxis2=dict(
+            gridcolor='gray',  # Color de las líneas de la cuadrícula en el eje Y
+            gridwidth=0.5
+        ),
+        xaxis=dict(
+            title='Población',
+            tickvals=np.arange(0, max_value + tick_interval, tick_interval),  # Ajustar los ticks del eje X
+            ticktext=[f'{i}' for i in np.arange(0, max_value + tick_interval, tick_interval)],
+            tickformat=',',  # Formato de los ticks con comas
+            range=[max_value, 0],  # Ajustar el rango del eje x para que vaya de max_value a 0
+            gridcolor='gray',  # Color de las líneas de la cuadrícula en el eje Y
+            gridwidth=0.5
+        ),
+        xaxis2=dict(
+            title='Población',
+            tickvals=np.arange(0, max_value + tick_interval, tick_interval),  # Ajustar los ticks del eje X para la segunda gráfica
+            ticktext=[f'{i}' for i in np.arange(0, max_value + tick_interval, tick_interval)],
+            tickformat=',',  # Formato de los ticks con comas
+            gridcolor='gray',  # Color de las líneas de la cuadrícula en el eje Y
+            gridwidth=0.5
+        ),
+        plot_bgcolor='white',  # Fondo del área de la gráfica
+        paper_bgcolor='white',  # Fondo del área de la gráfica completa
+        showlegend=True,
+        legend=dict(x=0.8, y=1),
+        autosize=True,
+        width=1000,  # Ancho total de la gráfica
+        height=600  # Alto de la gráfica
+    )
+    return fig
+
+def generate_language_donut_chart(df, region, colors, footer_text="Fuente: Datos proporcionados por el Departamento de Estadísticas"):
+    row = df[df["Dep_Prov_Mun"] == region].iloc[0]
+    values = row[1:].values
+    labels = df.columns[1:].values
+
+    fig = go.Figure(data=[go.Pie(
+        labels=labels, 
+        values=values, 
+        hole=.5, 
+        marker=dict(colors=colors, line=dict(color='black', width=0.5)),
+        #textinfo='label+percent',
+        textfont=dict(size=15)
+        )])
+
+    fig.update_layout(
+        title={
+            'text': f'Porcentaje de Idiomas con el que aprendió a hablar la población de 4 años a más ({region})',
+            'y':0.9,
+            'x':0.5,
+            'xanchor': 'center',
+            'yanchor': 'top'
+        },
+        annotations=[
+            dict(text=region, x=0.5, y=0.5, font_size=20, showarrow=False),
+            dict(text="Fuente: Datos del Censo 2012", x=0.5, y=-0.2, font_size=12, showarrow=False)
+        ],
+        legend=dict(
+            font=dict(size=14),  # Tamaño de la letra de la leyenda
+            orientation='h',  # Orientación horizontal de la leyenda
+            x=0.5,  # Posición horizontal de la leyenda
+            y=-0.05  # Posición vertical de la leyenda
+        ),
+        height=500,  # Ajustar el alto de la gráfica
+        width=1000   # Ajustar el ancho de la gráfica
+    )
+
+    return fig
+
+def generate_literacy_donut_chart(df, region):
+    row = df[df["Dep_Prov_Mun"] == region].iloc[0]
+    # Datos para hombres
+    values_hombre = [row["Hombre"], row["Hombre_Illiterate"]]
+    labels_hombre = ["Alfabetizados", "Analfabetos"]
+    colors_hombre = ["#0B34FE", "#0126DF"]  # Colores para alfabetizados y analfabetos
+
+    # Datos para mujeres
+    values_mujer = [row["Mujer"], row["Mujer_Illiterate"]]
+    labels_mujer = ["Alfabetizadas", "Analfabetas"]
+    colors_mujer = ["#FFAB5C", "#FF9633"]  # Colores para alfabetizadas y analfabetas
+    
+    # Crear subgráficas
+    fig = make_subplots(rows=1, cols=2, specs=[[{"type": "pie"}, {"type": "pie"}]])
+
+    # Añadir trazas a las subgráficas
+    fig.add_trace(
+        go.Pie(
+            labels=labels_hombre,
+            values=values_hombre,
+            name="Hombres",
+            marker=dict(colors=colors_hombre, line=dict(color='black', width=0.5)),
+            hole=.5,
+            #textinfo='label+percent',
+            textfont=dict(size=16)
+        ),
+        row=1, col=1
+    )
+
+    fig.add_trace(
+        go.Pie(
+            labels=labels_mujer,
+            values=values_mujer,
+            name="Mujeres",
+            marker=dict(colors=colors_mujer, line=dict(color='black', width=0.5)),
+            hole=.5,
+            #textinfo='label+percent',
+            textfont=dict(size=16)
+        ),
+        row=1, col=2
+    )
+
+    # Configurar el diseño de la gráfica
+    fig.update_layout(
+        title={
+            'text': f'Porcentaje de Alfabetismo por sexo ({region})',
+            'y':0.9,
+            'x':0.5,
+            'xanchor': 'center',
+            'yanchor': 'top'
+        },
+        annotations=[
+            dict(text='Hombres', x=0.165, y=0.5, font_size=20, showarrow=False),
+            dict(text='Mujeres', x=0.83, y=0.5, font_size=20, showarrow=False),
+            dict(text="Fuente: Datos del Censo 2012", x=0.5, y=-0.2, font_size=12, showarrow=False)
+        ],
+        legend=dict(
+            font=dict(size=14),  # Tamaño de la letra de la leyenda
+            orientation='h',  # Orientación horizontal de la leyenda
+            x=0.5,  # Posición horizontal de la leyenda
+            y=-0.05  # Posición vertical de la leyenda
+        ),
+        height=500,  # Ajustar el alto de la gráfica
+        width=1000  # Ajustar el ancho de la gráfica
+    )
+
+    return fig
+
+def generate_services_bar_chart(df, region):
+    row = df[df["Dep_Prov_Mun"] == region].iloc[0]
+    servicios = row.index[1:]
+    porcentajes = row.values[1:]
+
+    # Calcular los porcentajes restantes
+    porcentajes_restantes = 100 - porcentajes
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Bar(
+        x=servicios,
+        y=porcentajes,
+        name='Con Servicio',
+        marker_color='#636EFA'  # Color para "Con Servicio"
+    ))
+
+    fig.add_trace(go.Bar(
+        x=servicios,
+        y=porcentajes_restantes,
+        name='Sin Servicio',
+        marker_color='lightgrey'  # Color para "Sin Servicio"
+    ))
+
+    fig.update_layout(
+        barmode='stack',
+        title={
+            'text': f'Acceso a Servicios Básicos ({region})',
+            'y':0.9,
+            'x':0.5,
+            'xanchor': 'center',
+            'yanchor': 'top'
+        },
+        yaxis=dict(
+            title='Porcentaje',
+            ticksuffix='%',
+            gridcolor='grey'
+        ),
+        xaxis=dict(
+            title='Servicio Básico',
+            gridcolor='grey',
+            tickangle=-45
+        ),
+        paper_bgcolor='white',
+        plot_bgcolor='white',
+        showlegend=True,
+        height=500,  # Ajusta la altura del gráfico
+        width=800    # Ajusta el ancho del gráfico
+    )
+
+    # Añadir porcentaje a la derecha de las barras
+    for i, service in enumerate(servicios):
+        fig.add_annotation(
+            x=service,
+            y=porcentajes[i] + porcentajes_restantes[i] / 2,
+            text=f'{porcentajes_restantes[i]:.1f}%',
+            showarrow=False,
+            font=dict(size=16, color='black'),
+            align='left',
+            xanchor='center',
+            yanchor='middle'
+        )
+        fig.add_annotation(
+            x=service,
+            y=porcentajes[i] / 2,
+            text=f'{porcentajes[i]:.1f}%',
+            showarrow=False,
+            font=dict(size=16, color='black'),
+            align='right',
+            xanchor='center',
+            yanchor='middle'
+        )
+
+    return fig
+
+def generate_housing_pie_chart(df, region):
+    row = df[df["Dep_Prov_Mun"] == region].iloc[0]
+
+    # Datos para cada categoría de habitaciones
+    values = row[1:-1]  # Excluye la columna 'Dep_Prov_Mun' y 'Total'
+    labels = row.index[1:-1]  # Excluye la columna 'Dep_Prov_Mun' y 'Total'
+    colors = ['#AB63FA', '#636EFA', '#FFA15A', '#EF553B', '#00CC96']  # Colores para cada categoría
+
+    fig = go.Figure(data=[go.Pie(
+        labels=labels,
+        values=values,
+        hole=.5,
+        marker=dict(colors=colors, line=dict(color='black', width=0.5)),
+        #textinfo='label+percent',
+        textfont=dict(size=15)
+    )])
+
+    fig.update_layout(
+        title={
+            'text': f'Porcentaje de Número de Dormitorios en Viviendas Particulares Ocupadas ({region})',
+            'y':0.9,
+            'x':0.5,
+            'xanchor': 'center',
+            'yanchor': 'top'
+        },
+        annotations=[
+            dict(text="Fuenta: Datos del Censo 2012", x=0.5, y=-0.2, font_size=12, showarrow=False)
+        ],
+        height=500,
+        width=800,
+        legend=dict(
+            font=dict(size=14),
+            orientation='h',
+            x=0.5,
+            y=-0.05
+        )
+    )
+
+    return fig
+
+def generate_ocupation_bar_chart(df, region):
+    # Filtrar los datos por región
+    df_region = df[df["Dep_Prov_Mun"] == region]
+    
+    df_percent = df_region.copy()
+
+    # Calcular los porcentajes
+    for col in df_region.columns[2:-1]:
+        df_percent[col] = df_region[col] / df_region['Total'] * 100
+
+    df_percent['Total'] = 100 
+    
+    # Crear gráfico de barras agrupadas
+    fig = go.Figure()
+
+    # Lista de ocupaciones
+    occupations = df_percent.columns[2:-1]
+
+    # Añadir trazas para cada sexo
+    for gender in ['Hombre', 'Mujer']:
+        subset = df_percent[df_percent['Sexo'] == gender]
+        values = [subset[occupation].sum() for occupation in occupations]
+        
+        fig.add_trace(go.Bar(
+            x=occupations,  # Eje x con ocupaciones
+            y=values,       # Valores totales por ocupación
+            name=gender,
+            marker_color='#0126DF' if gender == 'Hombre' else '#FF9633',  # Colores
+            text=[f'{v:.2f}%' for v in values],  # Valores sobre las barras
+            textposition='auto',  # Posición del texto sobre las barras
+            marker=dict(
+                line=dict(
+                    color='black',  # Color del borde
+                    width=0.5       # Ancho del borde
+                )
+            )
+        ))
+
+    fig.update_layout(
+        barmode='group',  # Modo de barras agrupadas
+        title={
+            'text': f'Comparación en Porcentajes de Ocupaciones por Sexo ({region})',
+            'x': 0.5,  # Centrar título
+            'xanchor': 'center'
+        },
+        xaxis_title='Ocupación',
+        yaxis_title='Porcentaje (%)',
+        legend_title='Sexo',
+        plot_bgcolor='white',  # Fondo blanco de la gráfica
+        paper_bgcolor='white',  # Fondo blanco del área de trabajo
+        yaxis=dict(
+            gridcolor='lightgray'  # Líneas del eje y grises
+        ),
+        annotations=[{
+            'text': 'Fuente: Datos del Censo 2012',
+            'xref': 'paper',
+            'yref': 'paper',
+            'x': 0.5,
+            'y': -0.45,
+            'showarrow': False,
+            'font': dict(size=12, color='gray'),
+            'xanchor': 'center'
+        }],
+        height=600,
+        width=1000,
+    )
+
+    return fig
+
+def generate_secondary_abandonment_trend(df, region):
+    # Filtrar los datos para la tasa de abandono en secundaria
+    df_secondary = df[['Año', 'Sexo', 'Secundaria']].copy()
+    
+    # Crear gráfico de líneas
+    fig = go.Figure()
+
+    # Añadir trazas para cada sexo
+    for gender in ['Hombre', 'Mujer']:
+        subset = df_secondary[df_secondary['Sexo'] == gender]
+        color = '#0126DF' if gender == 'Hombre' else '#FF9633'
+        
+        fig.add_trace(go.Scatter(
+            x=subset['Año'],  # Eje x con años
+            y=subset['Secundaria'],  # Eje y con tasa de abandono en secundaria
+            mode='lines+markers+text',  # Mostrar líneas y puntos
+            name=gender,
+            line=dict(color='#0126DF' if gender == 'Hombre' else '#FF9633', width=2),  # Colores y ancho de línea
+            marker=dict(size=8),  # Tamaño de los puntos
+            text=[f'{v:.2f}%' for v in subset['Secundaria']],  # Valores sobre los puntos
+            textposition='top center',  # Posición del texto
+            textfont=dict(
+                color=color,  # Color del texto igual al de la línea
+                size=14  # Tamaño del texto
+            )
+        ))
+
+    fig.update_layout(
+        title={
+            'text': f'Tasa de Abandono en Nivel Secundario por Género (2013-2023) ({region})',
+            'x': 0.5,  # Centrar título
+            'xanchor': 'center'
+        },
+        xaxis_title='Año',
+        yaxis_title='Tasa de Abandono en Secundaria (%)',
+        legend_title='Sexo',
+        plot_bgcolor='white',  # Fondo blanco de la gráfica
+        paper_bgcolor='white',  # Fondo blanco del área de trabajo
+        xaxis=dict(
+            tickmode='linear',  # Mostrar todos los años
+            tick0=df_secondary['Año'].min(),  # Iniciar desde el año mínimo
+            dtick=1,  # Intervalo de ticks en el eje X
+        ),
+        yaxis=dict(
+            gridcolor='lightgray'  # Líneas del eje y grises
+        ),
+        annotations=[{
+            'text': 'Fuente: Ministerio de Educación',
+            'xref': 'paper',
+            'yref': 'paper',
+            'x': 0.5,
+            'y': -0.15,
+            'showarrow': False,
+            'font': dict(size=12, color='gray'),
+            'xanchor': 'center'
+        }],
+        height=600,
+        width=1000,
+    )
+
+    return fig
+
 app.layout = html.Div([
     dcc.Location(id='url', refresh=True),
     html.Div([
@@ -1066,16 +1639,18 @@ def generate_calculo_layout_salud(title):
         dcc.Dropdown(
             id='dropdown-graphic-type',
             options=[
-                {'label': 'Indice de Salud', 'value': 'ism'},
-                {'label': 'Tasa de Mortalidad Infantil', 'value': 'mortalidad_infantil'},
-                {'label': 'Ingreso Municipal', 'value': 'ingreso'},
-                {'label': 'Asistencia Escolar', 'value': 'asistencia_escolar'},
-                {'label': 'Años Promedio de Estudio', 'value': 'anio_estudio_promedio'},
-                {'label': 'Hogares con Electricidad', 'value': 'hogares_electricidad'},
-                {'label': 'Hogares con Saneamiento basico', 'value': 'hogares_saneamiento'},
-                {'label': 'Hogares con Agua potable', 'value': 'hogares_agua_potable'},
+                {'label': 'Piramides Poblacionales', 'value': 'p'},
+                {'label': 'Etnicidad', 'value': 'e'},
+                {'label': 'Alfabetismo', 'value': 'a'},
+                {'label': 'Servicios Basicos', 'value': 'sb'},
+                {'label': 'Hacinamiento', 'value': 'h'},
+                {'label': 'Ocupacion', 'value': 'o'},
+                {'label': 'Abandono Secundaria', 'value': 'as'},
+                {'label': 'Mortalidad Infantil', 'value': 'mi'},
+                {'label': 'Mortalidad', 'value': 'm'},
+                {'label': 'Fertilidad', 'value': 'f'}
             ],
-            value='t'
+            value='p'
         ),
         html.Div([
             html.Label('Título del gráfico: '),
@@ -1145,7 +1720,7 @@ def generate_calculo_layout_salud(title):
             dcc.Input(
                 id='input-tamaño-num-grafica',
                 type='number',
-                value=13,
+                value=15,
                 style={'width': '80px'}
             )
         ]),
@@ -1327,7 +1902,7 @@ def generate_calculo_layout(title):
             dcc.Input(
                 id='input-tamaño-num-grafica',
                 type='number',
-                value=13,
+                value=15,
                 style={'width': '80px'}
             )
         ]),
@@ -1506,7 +2081,7 @@ def generate_calculo_layout_nutricion(title):
             dcc.Input(
                 id='input-tamaño-num-grafica',
                 type='number',
-                value=13,
+                value=15,
                 style={'width': '80px'}
             )
         ]),
@@ -1694,7 +2269,7 @@ def generate_calculo_layout_embarazo(title):
             dcc.Input(
                 id='input-tamaño-num-grafica',
                 type='number',
-                value=13,
+                value=15,
                 style={'width': '80px'}
             )
         ]),
@@ -1863,7 +2438,7 @@ def generate_calculo_layout_consultas(title):
             dcc.Input(
                 id='input-tamaño-num-grafica',
                 type='number',
-                value=13,
+                value=15,
                 style={'width': '80px'}
             )
         ]),
@@ -2519,9 +3094,10 @@ def update_output_embarazo(n_clicks, type_age, type_mounth, type_percent,
 
             dfl_barras = dataframes_bar_dep + dataframes_bar_prov + dataframes_bar_mun
             dfl_tendencias = dataframes_ten_dep + dataframes_ten_prov + dataframes_ten_mun
-
+            dfl_total = dataframes_bar_dep + dataframes_ten_dep + dataframes_bar_prov + dataframes_ten_prov + dataframes_bar_mun + dataframes_ten_mun
             dfl_barras = [item for item in dfl_barras if item]
             dfl_tendencias = [item for item in dfl_tendencias if item]
+            dfl_total = [item for item in dfl_total if item]
 
             resultados = []
             partes = pathname.split('/')
@@ -2549,17 +3125,18 @@ def update_output_embarazo(n_clicks, type_age, type_mounth, type_percent,
                     df_pc = df_pc.groupby('Año').sum().reset_index()
                     df_sc = df_sc.groupby('Año').sum().reset_index()
                 elif type_mounth == 'm2':
-                    df_c = df_c[df_c['Tipo'] == 'Nuevo < 5'].drop(columns=['Tipo']).reset_index(drop=True)
-                    df_g = df_g[df_g['Tipo'] == 'Nuevo < 5'].drop(columns=['Tipo']).reset_index(drop=True)
-                    df_l = df_l[df_l['Tipo'] == 'Nuevo < 5'].drop(columns=['Tipo']).reset_index(drop=True)
-                    df_pc = df_pc[df_pc['Tipo'] == 'Nuevo < 5'].drop(columns=['Tipo']).reset_index(drop=True)
-                    df_sc = df_sc[df_sc['Tipo'] == 'Nuevo < 5'].drop(columns=['Tipo']).reset_index(drop=True)
+                    #df_c = df_c[df_c['Tipo'] == 'Nuevo < 5'].drop(columns=['Tipo']).reset_index(drop=True)
+                    df_c = df_c[df_c['Tipo'] == 'Nuevo < 5']
+                    df_g = df_g[df_g['Tipo'] == 'Nuevo < 5']
+                    df_l = df_l[df_l['Tipo'] == 'Nuevo < 5']
+                    df_pc = df_pc[df_pc['Tipo'] == 'Nuevo < 5']
+                    df_sc = df_sc[df_sc['Tipo'] == 'Nuevo < 5']
                 else:
-                    df_c = df_c[df_c['Tipo'] == 'Nuevo > 5'].drop(columns=['Tipo']).reset_index(drop=True)
-                    df_g = df_g[df_g['Tipo'] == 'Nuevo > 5'].drop(columns=['Tipo']).reset_index(drop=True)
-                    df_l = df_l[df_l['Tipo'] == 'Nuevo > 5'].drop(columns=['Tipo']).reset_index(drop=True)
-                    df_pc = df_pc[df_pc['Tipo'] == 'Nuevo > 5'].drop(columns=['Tipo']).reset_index(drop=True)
-                    df_sc = df_sc[df_sc['Tipo'] == 'Nuevo > 5'].drop(columns=['Tipo']).reset_index(drop=True)
+                    df_c = df_c[df_c['Tipo'] == 'Nuevo > 5']
+                    df_g = df_g[df_g['Tipo'] == 'Nuevo > 5']
+                    df_l = df_l[df_l['Tipo'] == 'Nuevo > 5']
+                    df_pc = df_pc[df_pc['Tipo'] == 'Nuevo > 5']
+                    df_sc = df_sc[df_sc['Tipo'] == 'Nuevo > 5']
                 
                 if type_age == 'r1':
                     p = p_c.groupby('Año')['10-14'].sum().tolist()
@@ -2604,6 +3181,18 @@ def update_output_embarazo(n_clicks, type_age, type_mounth, type_percent,
                 df_l.sort_values(by='Año', inplace=True)
                 df_pc.sort_values(by='Año', inplace=True)
                 df_sc.sort_values(by='Año', inplace=True)
+
+                df_c_y = calculate_age(df_c, p_c, partes[1])
+                df_g_y = calculate_age(df_g, p_g, partes[1])
+                df_l_y = calculate_age(df_l, p_l, partes[1])
+                df_pc_y = calculate_age(df_pc, p_pc, partes[1])
+                df_sc_y = calculate_age(df_sc, p_sc, partes[1])
+
+                df_c_y = calculate_age_total(df_c_y, partes[1])
+                df_g_y = calculate_age_total(df_g_y, partes[1])
+                df_l_y = calculate_age_total(df_l_y, partes[1])
+                df_pc_y = calculate_age_total(df_pc_y, partes[1])
+                df_sc_y = calculate_age_total(df_sc_y, partes[1])
                 
                 dataframes = {
                     'Santa Cruz': df_sc,
@@ -2613,15 +3202,30 @@ def update_output_embarazo(n_clicks, type_age, type_mounth, type_percent,
                     'Lagunillas': df_l
                 }
 
+                dataframes_age = {
+                    'Santa Cruz': df_sc_y,
+                    'Cordillera': df_pc_y,
+                    'Camiri': df_c_y,
+                    'Gutierrez': df_g_y,
+                    'Lagunillas': df_l_y
+                }
+
                 df_barras = [dataframes[nombre] for nombre in dfl_barras if nombre in dataframes]
                 df_tendencias = [dataframes[nombre] for nombre in dfl_tendencias if nombre in dataframes]
 
+                df_total = [dataframes_age[nombre] for nombre in dfl_total if nombre in dataframes_age]
                 resultados = []
                 if n_clicks > 0:                
                     fig=generate_graph_total(df_barras, df_tendencias, dfl_barras, dfl_tendencias,
                                                 titulo, tamanio_titulo, 'Año', tamanio_eje_x, type_percent, tamanio_eje_y,
                                                 pie, tamanio_pie, tamanio_leyenda, tamanio_num_grafica)
                     resultados.append(dcc.Graph(id='mi-grafico-total-nutricion', figure=fig))
+                    
+                    for i, df in enumerate(df_total):
+                        fig = generate_graph_age_pregnans(df, partes[1], dfl_total[i], 
+                                                        titulo, tamanio_titulo, 'Año', tamanio_eje_x, type_percent, tamanio_eje_y,
+                                                        pie, tamanio_pie, tamanio_leyenda, tamanio_num_grafica)
+                        resultados.append(dcc.Graph(id=f'mi-grafico-edad-embarazo-{i}', figure=fig))
 
                     return resultados
             
@@ -2800,10 +3404,29 @@ def update_output_salud(n_clicks, graphic_type,
             partes = pathname.split('/')
             resultados.append(html.H2(f'Gráfico '+partes[1]))
             df = get_casos(partes[1], 'guarani')
-            df_g = df[0]
-            df_l = df[1]
+            df_poblacion = df[0]
+            df_etnicidad = df[1]
+            df_alfabetismo = df[2]
+            df_servicios_basicos = df[3]
+            df_dormitorios = df[4]
+            df_ocupacion = df[5]
+            df_c_abandono = df[6]
+            df_g_abandono = df[7]
+            df_l_abandono = df[8]
+
+            df_poblacion = calculate_population_group(df_poblacion)
+            colors_language = ['#636EFA', '#EF553B', '#FFA15A', '#AB63FA', '#00CC96']  # Colores personalizados para los trozos de idiomas
+            # Agregar columnas para el porcentaje de analfabetos
+            df_alfabetismo["Hombre_Illiterate"] = 100 - df_alfabetismo["Hombre"]
+            df_alfabetismo["Mujer_Illiterate"] = 100 - df_alfabetismo["Mujer"]
+            df_alfabetismo["Total_Illiterate"] = 100 - df_alfabetismo["Total"]
+
+            df_dormitorios['cuatro o más'] = df_dormitorios[['cuatro', 'cinco', 'seis', 'siete', 'ocho o más']].sum(axis=1)
+            # Eliminar las columnas originales
+            df_dormitorios = df_dormitorios.drop(columns=['cuatro', 'cinco', 'seis', 'siete', 'ocho o más'])
+            df_dormitorios = df_dormitorios[['Dep_Prov_Mun', 's/n', 'un', 'dos', 'tres', 'cuatro o más', 'Total']]
             
-            graphic_config = {
+            """graphic_config = {
                 'ism': {'label': 'Indice de Salud', 'ids': ['mi-grafico-ism-1', 'mi-grafico-ism-2']},
                 'mortalidad_infantil': {'label': 'Tasa de Mortalidad Infantil', 'ids': ['mi-grafico-tmi-1', 'mi-grafico-tmi-2']},
                 'ingreso': {'label': 'Ingreso Municipal', 'ids': ['mi-grafico-im-1', 'mi-grafico-im-2']},
@@ -2812,20 +3435,68 @@ def update_output_salud(n_clicks, graphic_type,
                 'hogares_electricidad': {'label': 'Hogares con Electricidad', 'ids': ['mi-grafico-he-1', 'mi-grafico-he-2']},
                 'hogares_saneamiento': {'label': 'Hogares con Saneamiento básico', 'ids': ['mi-grafico-hs-1', 'mi-grafico-hs-2']},
                 'hogares_agua_potable': {'label': 'Hogares con Agua potable', 'ids': ['mi-grafico-hap-1', 'mi-grafico-hap-2']}
-            }
+            }"""
 
-            if n_clicks > 0:     
-                config = graphic_config.get(graphic_type)   
-                label = config['label']
-                ids = config['ids']
-                fig_g = generate_graph_by_years(df_g, label, 
-                                                titulo, tamanio_titulo, 'Año', tamanio_eje_x, graphic_type, tamanio_eje_y,
-                                                pie, tamanio_pie, tamanio_leyenda, tamanio_num_grafica)
-                fig_l = generate_graph_by_years(df_l, label, 
-                                                titulo, tamanio_titulo, 'Año', tamanio_eje_x, graphic_type, tamanio_eje_y,
-                                                pie, tamanio_pie, tamanio_leyenda, tamanio_num_grafica)
-                resultados.append(dcc.Graph(id=ids[0], figure=fig_g))        
-                resultados.append(dcc.Graph(id=ids[1], figure=fig_l))
+            if n_clicks > 0:
+                if graphic_type == 'p':
+                    fig = generate_population_pyramid(df_poblacion, "Cordillera")
+                    resultados.append(dcc.Graph(id='mi-piramide-poblacion-cordillera', figure=fig))
+                    fig = generate_population_pyramid(df_poblacion, "Camiri")
+                    resultados.append(dcc.Graph(id='mi-piramide-poblacion-camiri', figure=fig))
+                    fig = generate_population_pyramid(df_poblacion, "Gutierrez")
+                    resultados.append(dcc.Graph(id='mi-piramide-poblacion-gutierrez', figure=fig))
+                    fig = generate_population_pyramid(df_poblacion, "Lagunillas")
+                    resultados.append(dcc.Graph(id='mi-piramide-poblacion-lagunillas', figure=fig))
+                elif graphic_type == 'e':
+                    fig = generate_language_donut_chart(df_etnicidad, "Cordillera", colors_language)
+                    resultados.append(dcc.Graph(id='mi-dona-etnica-cordillera', figure=fig))
+                    fig = generate_language_donut_chart(df_etnicidad, "Camiri", colors_language)
+                    resultados.append(dcc.Graph(id='mi-dona-etnica-camiri', figure=fig))
+                    fig = generate_language_donut_chart(df_etnicidad, "Gutierrez", colors_language)
+                    resultados.append(dcc.Graph(id='mi-dona-etnica-gutierrez', figure=fig))
+                    fig = generate_language_donut_chart(df_etnicidad, "Lagunillas", colors_language)
+                    resultados.append(dcc.Graph(id='mi-dona-etnica-lagunillas', figure=fig))
+                elif graphic_type == 'a':
+                    fig = generate_literacy_donut_chart(df_alfabetismo, "Cordillera")
+                    resultados.append(dcc.Graph(id="mi-dona-analfabeta-cordillera", figure=fig))
+                    fig = generate_literacy_donut_chart(df_alfabetismo, "Camiri")
+                    resultados.append(dcc.Graph(id="mi-dona-analfabeta-camiri", figure=fig))
+                    fig = generate_literacy_donut_chart(df_alfabetismo, "Gutierrez")
+                    resultados.append(dcc.Graph(id="mi-dona-analfabeta-gutierrez", figure=fig))
+                    fig = generate_literacy_donut_chart(df_alfabetismo, "Lagunillas")
+                    resultados.append(dcc.Graph(id="mi-dona-analfabeta-lagunillas", figure=fig))
+                elif graphic_type == 'sb':
+                    fig = generate_services_bar_chart(df_servicios_basicos, "Cordillera")
+                    resultados.append(dcc.Graph(id="mi-grafica-basicos-cordillera", figure=fig))
+                    fig = generate_services_bar_chart(df_servicios_basicos, "Camiri")
+                    resultados.append(dcc.Graph(id="mi-grafica-basicos-camiri", figure=fig))
+                    fig = generate_services_bar_chart(df_servicios_basicos, "Gutierrez")
+                    resultados.append(dcc.Graph(id="mi-grafica-basicos-gutierrez", figure=fig))
+                    fig = generate_services_bar_chart(df_servicios_basicos, "Lagunillas")
+                    resultados.append(dcc.Graph(id="mi-grafica-basicos-lagunillas", figure=fig))
+                elif graphic_type == 'h':
+                    fig = generate_housing_pie_chart(df_dormitorios, "Cordillera")
+                    resultados.append(dcc.Graph(id="mi-dona-hacinamiento-cordillera", figure=fig))
+                    fig = generate_housing_pie_chart(df_dormitorios, "Camiri")
+                    resultados.append(dcc.Graph(id="mi-dona-hacinamiento-camiri", figure=fig))
+                    fig = generate_housing_pie_chart(df_dormitorios, "Gutierrez")
+                    resultados.append(dcc.Graph(id="mi-dona-hacinamiento-gutierrez", figure=fig))
+                    fig = generate_housing_pie_chart(df_dormitorios, "Lagunillas")
+                    resultados.append(dcc.Graph(id="mi-dona-hacinamiento-lagunillas", figure=fig))
+                elif graphic_type == 'o':
+                    fig = generate_ocupation_bar_chart(df_ocupacion, "Camiri")
+                    resultados.append(dcc.Graph(id="mi-bar-ocupacion-camiri", figure=fig))
+                    fig = generate_ocupation_bar_chart(df_ocupacion, "Gutierrez")
+                    resultados.append(dcc.Graph(id="mi-bar-ocupacion-gutierrez", figure=fig))
+                    fig = generate_ocupation_bar_chart(df_ocupacion, "Lagunillas")
+                    resultados.append(dcc.Graph(id="mi-bar-ocupacion-lagunillas", figure=fig))
+                elif graphic_type == 'as':
+                    fig = generate_secondary_abandonment_trend(df_c_abandono, "Camiri")
+                    resultados.append(dcc.Graph(id="mi-bar-abandono-camiri", figure=fig))
+                    fig = generate_secondary_abandonment_trend(df_g_abandono, "Gutierrez")
+                    resultados.append(dcc.Graph(id="mi-bar-abandono-gutierrez", figure=fig))
+                    fig = generate_secondary_abandonment_trend(df_l_abandono, "Lagunillas")
+                    resultados.append(dcc.Graph(id="mi-bar-abandono-lagunillas", figure=fig))
                 
                 return resultados
         
