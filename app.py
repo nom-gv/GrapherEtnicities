@@ -646,15 +646,6 @@ def generate_graph_separate_gender(dfs, graph_type, labels,
         barmode='group',
         plot_bgcolor='white',
         paper_bgcolor='white',
-        #annotations=[
-        #    dict(
-        #        text=footer,
-        #        xref="paper", yref="paper",
-        #        x=0.5, y=-0.1,  # Ajustar posición según sea necesario
-        #        showarrow=False,
-        #        font=dict(size=size_footer)
-        #    )
-        #],
         height=400 * num_rows,  # Ajustar la altura de las subplots
         width=1000,  # Ajustar la anchura de las subplots
     )
@@ -710,11 +701,11 @@ def generate_graph_separate_age(df, graph_type, labels,
             x=age_columns,  # Columnas desde < 6 en adelante son edades
             y=df_male[df_male[x] == year][age_columns].iloc[0],  # Fila correspondiente al año y hombres
             name=str(year),
-            marker=dict(color=colors_male[i]),
+            marker=dict(color=colors_male[i], line=dict(color='black', width=1)),
             legendgroup='hombres',
             texttemplate='%{y}',
             textposition='outside', 
-            textfont=dict(color=colors_male[i], size=size_graph, line=dict(color='black', width=1)),
+            textfont=dict(color=colors_male[i], size=size_graph),
         ), row=1, col=1)
 
     # Añadir barras para mujeres
@@ -723,11 +714,11 @@ def generate_graph_separate_age(df, graph_type, labels,
             x=age_columns,  # Columnas desde < 6 en adelante son edades
             y=df_female[df_female[x] == year][age_columns].iloc[0],  # Fila correspondiente al año y mujeres
             name=str(year),
-            marker=dict(color=colors_female[i]),
+            marker=dict(color=colors_female[i], line=dict(color='black', width=1)),
             legendgroup='mujeres',
             texttemplate='%{y}',
             textposition='outside', 
-            textfont=dict(color=colors_female[i], size=size_graph, line=dict(color='black', width=1)),
+            textfont=dict(color=colors_female[i], size=size_graph),
         ), row=1, col=2)
 
     if y == "Incidencia":
