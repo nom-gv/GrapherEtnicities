@@ -79,11 +79,6 @@ descarga_thread.start()
 # Inicializar la aplicación Dash
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
 
-# Configuración para el entorno local y Render
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8050))  # Obtener el puerto de la variable de entorno
-    app.run_server(host='0.0.0.0', port=port)
-
 def get_casos(tipo, comunidad):
     file_map = {
         'cancer': {
