@@ -80,9 +80,6 @@ descarga_thread.start()
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
 # Definir el servidor
 server = app.server
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8050))  # Obtiene el puerto desde la variable de entorno
-    app.run_server(host='0.0.0.0', port=port) 
 
 def get_casos(tipo, comunidad):
     file_map = {
@@ -4215,5 +4212,10 @@ def sync_municipio_dropdowns(bar_value, ten_value):
     return bar_value, ten_value
 
 
-if __name__ == '__main__':
-    app.run_server(debug=True)
+if __name__ == "__main__":
+    # Comprobar si estamos en un entorno de producción
+    if os.environ.get("PORT"):
+        port = int(os.environ["PORT"])  # Usa el puerto de la variable de entorno
+        app.run_server(host='0.0.0.0', port=port)  # Para producción
+    else:
+        app.run_server(debug=True)  # Para desarrollo, usa el modo debug
