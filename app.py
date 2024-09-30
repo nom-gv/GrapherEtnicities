@@ -78,6 +78,11 @@ descarga_thread.start()
 
 # Inicializar la aplicación Dash
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
+# Definir el servidor
+server = app.server
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8050))  # Obtiene el puerto desde la variable de entorno
+    app.run_server(host='0.0.0.0', port=port) 
 
 def get_casos(tipo, comunidad):
     file_map = {
